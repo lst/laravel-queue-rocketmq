@@ -37,7 +37,7 @@ class RocketMQConnector implements ConnectorInterface
     public function connect(array $config): Queue
     {
         /** @var MQClient $client */
-        $client = new MQClient(Arr::get($config, 'namesrv'), Arr::get($config, 'secret_key'),Arr::get($config, 'access_key'));
+        $client = new MQClient(Arr::get($config, 'namesrv'), Arr::get($config, 'access_key'),Arr::get($config, 'secret_key'));
         $this->dispatcher->listen(WorkerStopping::class, function () use ($client) {
             //$client->close();
         });

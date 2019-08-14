@@ -5,7 +5,7 @@ namespace lst\LaravelQueueRocketMQ\Queue\Jobs;
 use Exception;
 use Illuminate\Support\Str;
 use Illuminate\Queue\Jobs\Job;
-use MQ\Model\TopicMessage;
+use MQ\Model\Message;
 use MQ\MQConsumer;
 use Illuminate\Queue\Jobs\JobName;
 use Illuminate\Container\Container;
@@ -31,7 +31,7 @@ class RocketMQJob extends Job implements JobContract
         Container $container,
         RocketMQQueue $connection,
         MQConsumer $consumer,
-        TopicMessage $message
+        Message $message
     ) {
         $this->container = $container;
         $this->connection = $connection;

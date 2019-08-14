@@ -39,7 +39,7 @@ class RocketMQQueue extends Queue implements QueueContract
         $this->queueName = $config['queue'] ?? $config['options']['queue']['name'];
         $this->group = $config['group'] ?? $config['options']['group']['name'];
         $this->queueDelayName = $config['queue_delay'] ?? $config['options']['queue_delay']['name'];
-        $this->queueOptions = $config['options']['queue'];
+        $this->instanceId = $config['instance_id'];
         $this->queueOptions['arguments'] = isset($this->queueOptions['arguments']) ?
             json_decode($this->queueOptions['arguments'], true) : [];
 
@@ -62,6 +62,9 @@ class RocketMQQueue extends Queue implements QueueContract
     public function pushRaw($payload, $queueName = null, array $options = [])
     {
         try {
+            if(!isset($queueName)) {
+                $queueName = $this->queueName;
+            }
 
             $message = new TopicMessage($payload);
 
@@ -92,7 +95,7 @@ class RocketMQQueue extends Queue implements QueueContract
     /** {@inheritdoc} */
     public function later($delay, $job, $data = '', $queue = null)
     {
-        return $this->pushRaw($this->createPayload($job, $queue, $data), $queue, ['delay' => $this->secondsUntil($delay)]);
+        return $this->pushRaw($this->createPayload($job, $this->queueDelayName, $data), $queue, ['delay' => $this->secondsUntil($delay)]);
     }
 
     /**
@@ -107,6 +110,12 @@ class RocketMQQueue extends Queue implements QueueContract
      */
     public function release($delay, $job, $data, $queue, $attempts = 0)
     {
+        if($delay > 0) {
+            return $this->pushRaw($this->createPayload($job, $this->queueDelayName, $data), $this->queueDelayName, [
+                'delay' => $this->secondsUntil($delay),
+                'attempts' => $attempts,
+            ]);
+        }
         return $this->pushRaw($this->createPayload($job, $queue, $data), $queue, [
             'delay' => $this->secondsUntil($delay),
             'attempts' => $attempts,
@@ -117,10 +126,13 @@ class RocketMQQueue extends Queue implements QueueContract
     public function pop($queueName = null)
     {
         try {
+            if($queueName !== $this->queueDelayName && random_int(1,5) === 1){
+                $queueName = $this->queueDelayName;
+            }
 
             $consumer = $this->client->getConsumer($this->instanceId, $queueName, $this->group);
 
-            if ($messages = $consumer->consumeMessage(1)) {
+            if ($messages = $consumer->consumeMessage(1, 1)) {
                 return new RocketMQJob($this->container, $this, $consumer, $messages[0]);
             }
         } catch (\Throwable $exception) {
